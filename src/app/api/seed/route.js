@@ -74,7 +74,7 @@ export async function POST() {
     // --- SPOTLIGHT ---
     const spotlights = getSpotlights(guild);
     for (const sp of spotlights) {
-      await supabase.from("spotlight").insert(sp);
+      await supabase.from("spotlight").insert({ ...sp, guild });
     }
     results[guild].spotlights = spotlights.length;
 
