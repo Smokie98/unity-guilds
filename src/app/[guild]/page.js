@@ -132,6 +132,19 @@ export default function GuildPage() {
     loading: dataLoading,
   } = useGuildData(slug);
 
+  // Auto-navigate calendar to month of first upcoming event
+  const [calAutoJumped, setCalAutoJumped] = useState(false);
+  useEffect(() => {
+    if (!calAutoJumped && events.length > 0) {
+      const firstDate = safeDate(events[0].event_date);
+      if (firstDate && !isNaN(firstDate)) {
+        setCalYear(firstDate.getFullYear());
+        setCalMonth(firstDate.getMonth());
+      }
+      setCalAutoJumped(true);
+    }
+  }, [events, calAutoJumped]);
+
   // Check if user can inline-edit content
   const userCanEdit = user ? canEdit(user, slug) : false;
 
