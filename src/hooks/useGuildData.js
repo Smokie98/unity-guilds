@@ -63,7 +63,8 @@ export function useGuildData(guildSlug) {
             .select("*")
             .eq("guild", guildSlug)
             .eq("is_current", true)
-            .single(),
+            .order("created_at", { ascending: false })
+            .limit(1),
           supabase
             .from("spotlight")
             .select("*")
@@ -95,7 +96,7 @@ export function useGuildData(guildSlug) {
           latestNewsletter: newsletterRes.data?.[0] || null,
           events: eventsRes.data || [],
           announcements: announcementsRes.data || [],
-          spotlight: spotlightCurrentRes.data || null,
+          spotlight: spotlightCurrentRes.data?.[0] || null,
           pastSpotlights: spotlightPastRes.data || [],
           recaps: recapsRes.data || [],
           highlights: highlightsRes.data || [],

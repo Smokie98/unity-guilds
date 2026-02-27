@@ -42,17 +42,18 @@ export async function POST() {
   for (const guild of guilds) {
     results[guild] = {};
 
+    // --- CLEAR EXISTING SEED DATA ---
+    await supabase.from("newsletters").delete().eq("guild", guild);
+    await supabase.from("events").delete().eq("guild", guild);
+    await supabase.from("announcements").delete().eq("guild", guild);
+    await supabase.from("spotlight").delete().eq("guild", guild);
+    await supabase.from("guild_hall_recaps").delete().eq("guild", guild);
+    await supabase.from("highlights").delete().eq("guild", guild);
+
     // --- NEWSLETTERS ---
     const newsletters = getNewsletters(guild);
-    const { error: nlErr } = await supabase.from("newsletters").upsert(
-      newsletters,
-      { onConflict: "guild,issue_number", ignoreDuplicates: true }
-    );
-    if (nlErr) {
-      // fallback: just insert, skip duplicates
-      for (const nl of newsletters) {
-        await supabase.from("newsletters").insert(nl).select();
-      }
+    for (const nl of newsletters) {
+      await supabase.from("newsletters").insert(nl);
     }
     results[guild].newsletters = newsletters.length;
 
@@ -71,12 +72,6 @@ export async function POST() {
     results[guild].announcements = announcements.length;
 
     // --- SPOTLIGHT ---
-    // First mark all existing as not current
-    await supabase
-      .from("spotlight")
-      .update({ is_current: false })
-      .eq("guild", guild);
-
     const spotlights = getSpotlights(guild);
     for (const sp of spotlights) {
       await supabase.from("spotlight").insert(sp);

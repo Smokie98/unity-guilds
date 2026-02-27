@@ -27,42 +27,51 @@ const NAV_ITEMS = [
   { id: "admin", icon: "\u2699\ufe0f", label: "Admin Panel" },
 ];
 
+// Helper: safely parse a date string (handles both "YYYY-MM-DD" and full ISO timestamps)
+function safeDate(dateStr) {
+  if (!dateStr) return null;
+  // If it already contains "T", it's a full timestamp — parse directly
+  if (dateStr.includes("T")) return new Date(dateStr);
+  // Otherwise treat as date-only
+  return new Date(dateStr + "T00:00:00");
+}
+
 // Helper: format a date string to "FEB 18, 2026" style
 function formatDateShort(dateStr) {
-  if (!dateStr) return "";
-  const d = new Date(dateStr + "T00:00:00");
+  const d = safeDate(dateStr);
+  if (!d || isNaN(d)) return "";
   const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
   return `${months[d.getMonth()]} ${String(d.getDate()).padStart(2, "0")}, ${d.getFullYear()}`;
 }
 
 // Helper: format a date string to "FEBRUARY 18, 2026" style
 function formatDateLong(dateStr) {
-  if (!dateStr) return "";
-  const d = new Date(dateStr + "T00:00:00");
+  const d = safeDate(dateStr);
+  if (!d || isNaN(d)) return "";
   const months = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
   return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
 }
 
 // Helper: format a date string to "FEBRUARY 2026" style
 function formatMonthYear(dateStr) {
-  if (!dateStr) return "";
-  const d = new Date(dateStr + "T00:00:00");
+  const d = safeDate(dateStr);
+  if (!d || isNaN(d)) return "";
   const months = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
   return `${months[d.getMonth()]} ${d.getFullYear()}`;
 }
 
 // Helper: format "Feb 11, 2026" style
 function formatDateMedium(dateStr) {
-  if (!dateStr) return "";
-  const d = new Date(dateStr + "T00:00:00");
+  const d = safeDate(dateStr);
+  if (!d || isNaN(d)) return "";
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
 }
 
 // Helper: parse event_date to day and month parts
 function parseEventDate(dateStr) {
-  if (!dateStr) return { day: "", month: "" };
-  const d = new Date(dateStr + "T00:00:00");
+  const d = safeDate(dateStr);
+  if (!d || isNaN(d)) return { day: "", month: "" };
   const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
   return {
     day: String(d.getDate()).padStart(2, "0"),
