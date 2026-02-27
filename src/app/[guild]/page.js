@@ -85,6 +85,25 @@ export default function GuildPage() {
   const [activeSection, setActiveSection] = useState("home");
   const [showEventPopup, setShowEventPopup] = useState(false);
   const [popupDay, setPopupDay] = useState(null);
+  const [user, setUser] = useState(null);
+  const [authChecked, setAuthChecked] = useState(false);
+
+  // Check authentication — redirect to landing page if not logged in
+  useEffect(() => {
+    fetch("/api/auth/session")
+      .then((res) => {
+        if (res.ok) return res.json();
+        throw new Error("Not authenticated");
+      })
+      .then((data) => {
+        setUser(data);
+        setAuthChecked(true);
+      })
+      .catch(() => {
+        // Not logged in — send back to landing page
+        router.push("/");
+      });
+  }, [router]);
 
   // If guild not found, redirect to home
   useEffect(() => {
@@ -93,7 +112,17 @@ export default function GuildPage() {
     }
   }, [guild, router]);
 
-  if (!guild) return null;
+  // Show loading state while checking auth
+  if (!authChecked || !guild) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: "#0a0a0a", color: "#888", fontFamily: "var(--font-dm-sans), sans-serif" }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: "32px", marginBottom: "12px" }}>✨</div>
+          <div>Verifying your guild membership...</div>
+        </div>
+      </div>
+    );
+  }
 
   // Build guild-specific CSS variables
   const guildStyle = {
@@ -194,9 +223,38 @@ export default function GuildPage() {
               <div className="notif-dot" />
             </div>
             <div className="user-chip">
-              <div className="user-avatar">\ud83c\udf38</div>
-              <span className="user-name">Guildie</span>
+              {user?.avatar_url ? (
+                <img
+                  src={user.avatar_url}
+                  alt={user.display_name || user.username}
+                  className="user-avatar-img"
+                  style={{ width: "28px", height: "28px", borderRadius: "50%", objectFit: "cover" }}
+                />
+              ) : (
+                <div className="user-avatar">\ud83c\udf38</div>
+              )}
+              <span className="user-name">{user?.display_name || user?.username || "Guildie"}</span>
             </div>
+            <button
+              onClick={() => {
+                fetch("/api/auth/logout", { method: "POST" })
+                  .then(() => { window.location.href = "/"; })
+                  .catch(console.error);
+              }}
+              style={{
+                fontSize: "12px",
+                color: "var(--guild-muted)",
+                background: "none",
+                cursor: "pointer",
+                padding: "8px 12px",
+                border: "1px solid var(--guild-border)",
+                borderRadius: "10px",
+                whiteSpace: "nowrap",
+                fontFamily: "inherit",
+              }}
+            >
+              Logout
+            </button>
             <Link
               href="/"
               style={{
@@ -248,7 +306,7 @@ export default function GuildPage() {
               <div className="hero-badge">\u2728 Issue #{SAMPLE_NEWSLETTER.issueNum} \u2014 {SAMPLE_NEWSLETTER.date}</div>
               <h1 className="hero-title">
                 Welcome back,<br />
-                <span className="ombre">Guildie! {guild.emoji}</span>
+                <span className="ombre">{user?.display_name || user?.username || "Guildie"}! {guild.emoji}</span>
               </h1>
               <p className="hero-desc">
                 Your weekly roundup of everything happening in the {guild.name}. Stay connected, get involved, and celebrate our community.

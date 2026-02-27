@@ -29,13 +29,15 @@ export default function Home() {
   }
 
   function handleVerify() {
-    // In production this will redirect to Discord OAuth
-    // For now, navigate directly to the guild page or games page
-    if (authState.mode === "games") {
-      window.location.href = "/guildie-games";
-    } else if (authState.slug) {
-      window.location.href = `/${authState.slug}`;
-    }
+    // Redirect to Discord OAuth for real authentication
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+    const clientId = process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID;
+    const redirectUri = encodeURIComponent(`${siteUrl}/api/auth/callback`);
+    const state = authState.mode === "games" ? "games" : (authState.slug || "");
+    const scope = encodeURIComponent("identify guilds guilds.members.read");
+
+    window.location.href =
+      `https://discord.com/api/oauth2/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&state=${state}`;
   }
 
   return (
