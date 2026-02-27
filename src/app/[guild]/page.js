@@ -92,7 +92,8 @@ function estimateReadTime(content) {
 export default function GuildPage() {
   const params = useParams();
   const router = useRouter();
-  const guild = getGuild(params.guild);
+  const slug = params.guild;
+  const guild = getGuild(slug);
   const [activeSection, setActiveSection] = useState("home");
   const [showEventPopup, setShowEventPopup] = useState(false);
   const [popupDay, setPopupDay] = useState(null);
@@ -117,7 +118,7 @@ export default function GuildPage() {
     highlights,
     settings,
     loading: dataLoading,
-  } = useGuildData(params.guild);
+  } = useGuildData(slug);
 
   // Check if user can inline-edit content
   const userCanEdit = user ? canEdit(user, slug) : false;
