@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { GUILDS, getLandingGuilds } from "@/lib/guilds";
+import { canAccessAdmin } from "@/lib/permissions";
+import { AdminGuildProvider, useAdminGuild } from "@/contexts/AdminGuildContext";
 
 const NAV_ITEMS = [
   { href: "/admin", icon: "\ud83d\udcca", label: "Overview" },
@@ -20,20 +22,39 @@ const NAV_ITEMS = [
   { href: "/admin/settings", icon: "\u2699\ufe0f", label: "Site Settings" },
 ];
 
-export default function AdminLayout({ children }) {
+function AdminContent({ children }) {
   const pathname = usePathname();
-  const [selectedGuild, setSelectedGuild] = useState("women");
+  const router = useRouter();
+  const { selectedGuild, setSelectedGuild, user, loading } = useAdminGuild();
   const guildSlugs = getLandingGuilds();
 
-  // Store selected guild in sessionStorage
+  // Auth guard — redirect non-admins
   useEffect(() => {
-    const saved = sessionStorage.getItem("admin-guild");
-    if (saved && GUILDS[saved]) setSelectedGuild(saved);
-  }, []);
+    if (!loading && (!user || !canAccessAdmin(user))) {
+      router.push("/");
+    }
+  }, [user, loading, router]);
 
-  function handleGuildChange(e) {
-    setSelectedGuild(e.target.value);
-    sessionStorage.setItem("admin-guild", e.target.value);
+  if (loading) {
+    return (
+      <div style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        height: "100vh",
+        background: "#0a0a0a",
+        color: "#888",
+      }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: "32px", marginBottom: "12px" }}>⚙️</div>
+          <div>Verifying admin access...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user || !canAccessAdmin(user)) {
+    return null;
   }
 
   return (
@@ -48,7 +69,7 @@ export default function AdminLayout({ children }) {
         <select
           className="admin-guild-picker"
           value={selectedGuild}
-          onChange={handleGuildChange}
+          onChange={(e) => setSelectedGuild(e.target.value)}
         >
           {guildSlugs.map((slug) => (
             <option key={slug} value={slug}>
@@ -77,19 +98,22 @@ export default function AdminLayout({ children }) {
 
         <div className="admin-sidebar-footer">
           <Link href={`/${selectedGuild}`} className="admin-back-link">
-            \u2190 View {GUILDS[selectedGuild]?.shortName || "Guild"} Site
+            ← View {GUILDS[selectedGuild]?.shortName || "Guild"} Site
           </Link>
         </div>
       </aside>
 
       <main className="admin-main">
-        {/* Pass selectedGuild to children via a data attribute and script */}
-        <div data-admin-guild={selectedGuild}>
-          {typeof children === "function"
-            ? children({ selectedGuild })
-            : children}
-        </div>
+        {children}
       </main>
     </div>
+  );
+}
+
+export default function AdminLayout({ children }) {
+  return (
+    <AdminGuildProvider>
+      <AdminContent>{children}</AdminContent>
+    </AdminGuildProvider>
   );
 }

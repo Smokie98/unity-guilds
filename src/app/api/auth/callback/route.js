@@ -90,6 +90,10 @@ export async function GET(request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
+    const avatarUrl = discordUser.avatar
+      ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png`
+      : null;
+
     const { error: upsertError } = await supabaseAdmin
       .from("users")
       .upsert(
@@ -97,9 +101,7 @@ export async function GET(request) {
           discord_id: discordUser.id,
           username: discordUser.username,
           display_name: discordUser.global_name || discordUser.username,
-          avatar_url: discordUser.avatar
-            ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png`
-            : null,
+          avatar_url: avatarUrl,
           guild: userGuild,
           discord_roles: userRoles,
           updated_at: new Date().toISOString(),
@@ -111,17 +113,29 @@ export async function GET(request) {
       console.error("User upsert error:", upsertError);
     }
 
-    // 5. Set a session cookie with user info
+    // 4b. Fetch user's app role from database
+    // (Admins set roles via Supabase dashboard — role persists across logins)
+    let appRole = "member";
+    const { data: dbUser } = await supabaseAdmin
+      .from("users")
+      .select("role")
+      .eq("discord_id", discordUser.id)
+      .single();
+
+    if (dbUser?.role) {
+      appRole = dbUser.role;
+    }
+
+    // 5. Set a session cookie with user info (includes app role)
     const cookieStore = await cookies();
     const sessionData = {
       discord_id: discordUser.id,
       username: discordUser.username,
       display_name: discordUser.global_name || discordUser.username,
-      avatar_url: discordUser.avatar
-        ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png`
-        : null,
+      avatar_url: avatarUrl,
       guild: userGuild,
-      roles: userRoles,
+      role: appRole,
+      discord_roles: userRoles,
     };
 
     cookieStore.set("unity-session", JSON.stringify(sessionData), {
