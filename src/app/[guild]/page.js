@@ -8,7 +8,7 @@ import { useGuildData } from "@/hooks/useGuildData";
 import AddToCalendar from "@/components/AddToCalendar";
 import SearchPanel from "@/components/SearchPanel";
 import InlineEditor from "@/components/InlineEditor";
-import { canEdit } from "@/lib/permissions";
+import { canEdit, canAccessAdmin } from "@/lib/permissions";
 
 const NAV_ITEMS = [
   { id: "home", icon: "\ud83c\udfe0", label: "Home" },
@@ -335,6 +335,8 @@ export default function GuildPage() {
             );
           }
           if (item.id === "admin") {
+            // Only show admin link for users with admin access
+            if (!canAccessAdmin(user)) return null;
             return (
               <Link key={item.id} href="/admin" className={`nav-item ${activeSection === item.id ? "active" : ""}`}>
                 <span className="nav-icon">{item.icon}</span>

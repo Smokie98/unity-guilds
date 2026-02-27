@@ -455,6 +455,55 @@ a { color: inherit; text-decoration: none; }
 .archive-title { font-family: 'Playfair Display', serif; font-size: 15px; font-weight: 700; margin-bottom: 6px; }
 .archive-preview { font-size: 12px; color: var(--guild-text2); line-height: 1.5; }
 
+/* Calendar Widget */
+.cal-widget { background: var(--grad-card); border: 1px solid var(--guild-border); border-radius: 20px; padding: 24px; margin-bottom: 24px; }
+.cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.cal-title { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 700; }
+.cal-nav-btn { width: 36px; height: 36px; border-radius: 10px; background: rgba(255,255,255,0.04); border: 1px solid var(--guild-border); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; color: var(--guild-text2); font-size: 16px; font-weight: 600; user-select: none; }
+.cal-nav-btn:hover { background: rgba(var(--a-rgb),0.1); border-color: var(--b); color: var(--guild-text); }
+.cal-grid { }
+.cal-days-header { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; margin-bottom: 8px; }
+.cal-day-name { text-align: center; font-size: 11px; font-weight: 600; color: var(--guild-muted); text-transform: uppercase; letter-spacing: 0.05em; padding: 6px 0; }
+.cal-dates { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.cal-date { text-align: center; padding: 10px 4px; border-radius: 10px; font-size: 14px; font-weight: 500; color: var(--guild-text2); transition: all 0.15s; position: relative; }
+.cal-date.other-month { color: transparent; }
+.cal-date.today { background: rgba(var(--a-rgb),0.15); color: var(--b); font-weight: 700; box-shadow: inset 0 0 0 2px rgba(var(--a-rgb),0.4); }
+.cal-date.has-event { background: rgba(var(--c-rgb),0.12); color: var(--c); cursor: pointer; font-weight: 600; }
+.cal-date.has-event:hover { background: rgba(var(--c-rgb),0.25); transform: scale(1.1); }
+.cal-date.has-event::after { content: ''; position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); width: 5px; height: 5px; border-radius: 50%; background: var(--c); }
+.cal-date.today.has-event { background: linear-gradient(135deg, rgba(var(--a-rgb),0.2), rgba(var(--c-rgb),0.2)); box-shadow: inset 0 0 0 2px rgba(var(--a-rgb),0.5); }
+
+/* Event Popup Overlay */
+.event-popup-overlay { display: none; position: fixed; inset: 0; z-index: 200; background: rgba(8,5,16,0.85); backdrop-filter: blur(12px); align-items: center; justify-content: center; }
+.event-popup-overlay.show { display: flex; }
+.event-popup { background: var(--grad-card); border: 1px solid var(--guild-border); border-radius: 24px; padding: 28px; width: 90%; max-width: 480px; animation: fadeUp 0.3s ease both; }
+.popup-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid var(--guild-border); }
+.popup-date-title { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; }
+.popup-close { width: 32px; height: 32px; border-radius: 8px; background: rgba(255,255,255,0.04); border: 1px solid var(--guild-border); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; font-size: 16px; color: var(--guild-muted); }
+.popup-close:hover { background: rgba(255,255,255,0.1); color: var(--guild-text); }
+.popup-events { display: flex; flex-direction: column; gap: 16px; }
+.popup-event { padding: 16px; background: rgba(255,255,255,0.02); border: 1px solid var(--guild-border); border-radius: 14px; }
+.popup-event-name { font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+.popup-event-time { font-size: 12px; color: var(--guild-muted); font-family: 'DM Mono', monospace; margin-bottom: 8px; }
+.popup-event-desc { font-size: 13px; color: var(--guild-text2); line-height: 1.5; margin-bottom: 12px; }
+.popup-event-actions { display: flex; gap: 8px; }
+
+/* Announcement title (used with InlineEditor) */
+.ann-title { font-weight: 600; font-size: 14px; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+/* Games CTA on home page */
+.games-cta { display: flex; align-items: center; gap: 18px; padding: 24px 28px; background: linear-gradient(145deg, rgba(251,191,36,0.08) 0%, rgba(168,85,247,0.08) 100%); border: 1px solid rgba(251,191,36,0.25); border-radius: 20px; transition: all 0.25s; cursor: pointer; }
+.games-cta:hover { border-color: rgba(251,191,36,0.5); transform: translateY(-2px); box-shadow: 0 12px 32px rgba(0,0,0,0.3); }
+.games-trophy-big { font-size: 44px; flex-shrink: 0; filter: drop-shadow(0 0 12px rgba(251,191,36,0.5)); }
+.games-cta-content { flex: 1; }
+.games-cta-title { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 700; color: #fbbf24; margin-bottom: 4px; }
+.games-cta-sub { font-size: 13px; color: var(--guild-muted); margin-bottom: 10px; }
+.games-scoreboard-mini { display: flex; flex-direction: column; gap: 4px; }
+.mini-score-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.mini-rank { font-size: 16px; }
+.mini-guild { color: var(--guild-text2); }
+.mini-val { color: var(--guild-muted); margin-left: auto; font-family: 'DM Mono', monospace; font-size: 12px; }
+
 /* Admin panel */
 .admin-panel { background: var(--grad-card); border: 1px solid rgba(var(--c-rgb),0.2); border-radius: 18px; overflow: hidden; margin-bottom: 20px; }
 .admin-header-bar { padding: 14px 22px; background: rgba(var(--c-rgb),0.04); border-bottom: 1px solid rgba(var(--c-rgb),0.08); font-weight: 600; font-size: 13px; color: var(--guild-text2); display: flex; align-items: center; gap: 8px; }
