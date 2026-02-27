@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 
 const SECTION_LABELS = {
   newsletters: { icon: "\ud83d\udcf0", label: "Newsletters", section: "newsletter" },
@@ -20,6 +21,7 @@ export default function SearchPanel({ guild, onNavigate }) {
   const inputRef = useRef(null);
   const panelRef = useRef(null);
   const debounceRef = useRef(null);
+  const router = useRouter();
 
   // Build flat list of all results for keyboard nav
   const flatResults = [];
@@ -68,6 +70,17 @@ export default function SearchPanel({ guild, onNavigate }) {
       inputRef.current?.blur();
       return;
     }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (focusIdx >= 0 && flatResults.length > 0) {
+        selectResult(flatResults[focusIdx]);
+      } else if (query.trim().length >= 2) {
+        // Navigate to search results page
+        setOpen(false);
+        router.push(`/search?q=${encodeURIComponent(query.trim())}&guild=${encodeURIComponent(guild)}`);
+      }
+      return;
+    }
     if (!open || flatResults.length === 0) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -75,9 +88,6 @@ export default function SearchPanel({ guild, onNavigate }) {
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setFocusIdx((prev) => Math.max(prev - 1, 0));
-    } else if (e.key === "Enter" && focusIdx >= 0) {
-      e.preventDefault();
-      selectResult(flatResults[focusIdx]);
     }
   }
 

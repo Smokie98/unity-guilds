@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useGamesData } from "@/hooks/useGuildData";
 
@@ -23,6 +23,15 @@ const GUILD_ROW_CLASSES = {
 export default function GuildieGamesPage() {
   const { months, scores, loading } = useGamesData();
   const [activeMonth, setActiveMonth] = useState(null);
+  const [userGuild, setUserGuild] = useState(null);
+
+  // Fetch user's guild for back navigation
+  useEffect(() => {
+    fetch("/api/auth/session")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => { if (data?.guild) setUserGuild(data.guild); })
+      .catch(() => {});
+  }, []);
 
   // Build timeline data from real months, pad to 12
   const timeline = useMemo(() => {
@@ -100,7 +109,7 @@ export default function GuildieGamesPage() {
           <div className="bg-orb" />
         </div>
         <div className="main" style={{ maxWidth: "1100px", margin: "0 auto", padding: "40px 24px", position: "relative", zIndex: 1 }}>
-          <Link href="/" className="back-nav">{"\u2190"} All Guilds</Link>
+          <Link href={userGuild ? `/${userGuild}` : "/"} className="back-nav">{"\u2190"} {userGuild ? "Back to Guild" : "All Guilds"}</Link>
           <div style={{ textAlign: "center", padding: "120px 0", color: "var(--muted)" }}>
             <div style={{ fontSize: "48px", marginBottom: "16px" }}>{"\ud83c\udfc6"}</div>
             <div style={{ fontSize: "18px" }}>Loading Guildie Games...</div>

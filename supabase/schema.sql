@@ -188,6 +188,7 @@ CREATE TABLE IF NOT EXISTS site_settings (
   custom_css TEXT,
   heading_font TEXT DEFAULT 'Playfair Display',
   body_font TEXT DEFAULT 'DM Sans',
+  twitch_channels TEXT[] DEFAULT '{}',
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 

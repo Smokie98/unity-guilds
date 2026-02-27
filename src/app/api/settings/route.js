@@ -51,6 +51,7 @@ export async function PUT(request) {
     ...(body.custom_css !== undefined && { custom_css: body.custom_css }),
     ...(body.heading_font !== undefined && { heading_font: body.heading_font }),
     ...(body.body_font !== undefined && { body_font: body.body_font }),
+    ...(body.twitch_channels !== undefined && { twitch_channels: body.twitch_channels }),
     updated_at: new Date().toISOString(),
   };
 

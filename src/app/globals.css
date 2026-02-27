@@ -802,3 +802,249 @@ textarea.admin-form-input { min-height: 100px; resize: vertical; }
 @media (max-width: 600px) {
   .guild-grid { grid-template-columns: 1fr; }
 }
+
+/* ===== Phase 2 Styles: Expandable, Inline Add, Tags, Notifications, Search Results, Streams ===== */
+
+/* Inline add button */
+.btn-add-inline {
+  font-size: 12px;
+  padding: 6px 14px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: var(--guild-text, #fff);
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.btn-add-inline:hover {
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.2);
+}
+
+/* Notification dropdown */
+.notif-btn { position: relative; }
+.notif-dot {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 10px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+}
+.notif-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 320px;
+  background: rgba(20,20,28,0.98);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 14px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+  z-index: 1000;
+  overflow: hidden;
+  backdrop-filter: blur(20px);
+}
+.notif-header {
+  padding: 14px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--guild-text, #fff);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.notif-item {
+  padding: 12px 18px;
+  cursor: pointer;
+  transition: background 0.15s;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+.notif-item:hover { background: rgba(255,255,255,0.04); }
+.notif-item-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--guild-text, #fff);
+  margin-bottom: 2px;
+}
+.notif-item-meta {
+  font-size: 11px;
+  color: var(--guild-muted, #888);
+  text-transform: capitalize;
+}
+.notif-empty {
+  padding: 24px 18px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--guild-muted, #888);
+}
+
+/* Editable tag chips */
+.chip-remove {
+  display: inline-block;
+  margin-left: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+.chip-remove:hover { opacity: 1; color: #ef4444; }
+.add-chip {
+  background: rgba(255,255,255,0.04) !important;
+  border: 1px dashed rgba(255,255,255,0.15) !important;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.add-chip:hover {
+  background: rgba(255,255,255,0.08) !important;
+  border-color: rgba(255,255,255,0.25) !important;
+}
+
+/* Expanded card styles */
+.card-expanded {
+  grid-column: span 2;
+}
+.card-expanded .card-excerpt {
+  -webkit-line-clamp: unset;
+  max-height: none;
+}
+
+/* Recap expandable */
+.recap-summary-preview {
+  position: relative;
+}
+.recap-expand-hint {
+  display: block;
+  font-size: 12px;
+  color: var(--guild-muted, var(--a, #9146FF));
+  margin-top: 6px;
+  opacity: 0.7;
+}
+.recap-expanded {
+  border-color: rgba(255,255,255,0.12);
+}
+.recap-expanded .recap-summary {
+  -webkit-line-clamp: unset;
+  max-height: none;
+}
+
+/* Highlight expandable */
+.highlight-card {
+  position: relative;
+  transition: all 0.3s ease;
+}
+.highlight-expanded {
+  grid-column: span 3;
+}
+.highlight-expanded .highlight-img {
+  height: 220px;
+}
+.highlight-expanded-content {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+.highlight-desc {
+  font-size: 13px;
+  color: var(--guild-text2, #ccc);
+  line-height: 1.6;
+}
+
+/* Twitch streams grid */
+.streams-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 16px;
+  padding: 16px 0;
+}
+.stream-embed {
+  border-radius: 12px;
+  overflow: hidden;
+}
+.stream-embed iframe {
+  display: block;
+}
+
+/* Search results page */
+.search-results-page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 40px 24px;
+  position: relative;
+  z-index: 1;
+}
+.search-results-title {
+  font-family: var(--font-playfair), serif;
+  font-size: clamp(28px, 5vw, 42px);
+  font-weight: 900;
+  color: #fff;
+  margin-bottom: 24px;
+}
+.search-results-count {
+  font-size: 14px;
+  color: #888;
+  margin-bottom: 32px;
+}
+.search-results-group {
+  margin-bottom: 32px;
+}
+.search-results-group-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  margin-bottom: 12px;
+}
+.search-result-card {
+  display: block;
+  padding: 16px 20px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  margin-bottom: 10px;
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.15s;
+}
+.search-result-card:hover {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.12);
+}
+.search-result-card-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 6px;
+}
+.search-result-card-snippet {
+  font-size: 13px;
+  color: #999;
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+.search-result-card-meta {
+  font-size: 12px;
+  color: #666;
+}
+
+/* Responsive adjustments for new features */
+@media (max-width: 768px) {
+  .card-expanded { grid-column: span 1; }
+  .highlight-expanded { grid-column: span 1; }
+  .highlight-expanded .highlight-img { height: 160px; }
+  .notif-dropdown { width: 280px; right: -60px; }
+  .streams-grid { grid-template-columns: 1fr; }
+  .search-results-page { padding: 24px 16px; }
+}

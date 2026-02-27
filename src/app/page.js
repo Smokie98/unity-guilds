@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getLandingGuilds, GUILDS } from "@/lib/guilds";
 
@@ -14,14 +15,32 @@ function DiscordIcon() {
 
 export default function Home() {
   const [authState, setAuthState] = useState({ show: false, guild: null, mode: null });
+  const [sessionUser, setSessionUser] = useState(null);
   const guildSlugs = getLandingGuilds();
+  const router = useRouter();
+
+  // Check if user is already logged in
+  useEffect(() => {
+    fetch("/api/auth/session")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => { if (data) setSessionUser(data); })
+      .catch(() => {});
+  }, []);
 
   function enterGuild(slug) {
-    setAuthState({ show: true, guild: GUILDS[slug], mode: "guild", slug });
+    if (sessionUser) {
+      router.push("/" + slug);
+    } else {
+      setAuthState({ show: true, guild: GUILDS[slug], mode: "guild", slug });
+    }
   }
 
   function enterGames() {
-    setAuthState({ show: true, guild: null, mode: "games" });
+    if (sessionUser) {
+      router.push("/guildie-games");
+    } else {
+      setAuthState({ show: true, guild: null, mode: "games" });
+    }
   }
 
   function closeAuth() {
@@ -77,8 +96,8 @@ export default function Home() {
                   <div className="card-guild-name">{guild.name}</div>
                   <div className="card-tagline">{guild.tagline}</div>
                   <button className="card-enter-btn">
-                    <DiscordIcon />
-                    Enter with Discord
+                    {sessionUser ? null : <DiscordIcon />}
+                    {sessionUser ? "Enter Guild →" : "Enter with Discord"}
                   </button>
                 </div>
               </div>

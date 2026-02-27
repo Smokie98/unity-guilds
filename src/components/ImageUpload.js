@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 
-export default function ImageUpload({ onUpload, bucket = "guild-images", folder = "" }) {
+export default function ImageUpload({ onUpload, bucket = "guild-images", folder = "", small = false, label = "Upload Image", currentUrl = null }) {
   const [preview, setPreview] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
@@ -97,6 +97,37 @@ export default function ImageUpload({ onUpload, bucket = "guild-images", folder 
     setPreview(null);
     setError(null);
     if (fileRef.current) fileRef.current.value = "";
+  }
+
+  if (small) {
+    return (
+      <div>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          onChange={handleFileSelect}
+          style={{ display: "none" }}
+        />
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }}
+          style={{
+            fontSize: "11px",
+            padding: "4px 10px",
+            borderRadius: "8px",
+            background: "rgba(255,255,255,0.06)",
+            border: "1px solid rgba(255,255,255,0.12)",
+            color: "var(--guild-muted, #888)",
+            cursor: "pointer",
+            fontFamily: "inherit",
+          }}
+        >
+          {uploading ? "Uploading..." : label}
+        </button>
+        {error && <div style={{ fontSize: "11px", color: "#f87171", marginTop: "4px" }}>{error}</div>}
+      </div>
+    );
   }
 
   return (

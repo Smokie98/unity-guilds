@@ -5,9 +5,11 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { getGuild, GUILDS } from "@/lib/guilds";
 import { useGuildData } from "@/hooks/useGuildData";
+import { useSearchParams } from "next/navigation";
 import AddToCalendar from "@/components/AddToCalendar";
 import SearchPanel from "@/components/SearchPanel";
 import InlineEditor from "@/components/InlineEditor";
+import ImageUpload from "@/components/ImageUpload";
 import { canEdit, canAccessAdmin } from "@/lib/permissions";
 
 const NAV_ITEMS = [
@@ -113,6 +115,29 @@ export default function GuildPage() {
   const [authChecked, setAuthChecked] = useState(false);
   const [selectedNewsletter, setSelectedNewsletter] = useState(null);
 
+  // Expandable content states
+  const [expandedSpotlight, setExpandedSpotlight] = useState(null);
+  const [expandedRecap, setExpandedRecap] = useState(null);
+  const [expandedHighlight, setExpandedHighlight] = useState(null);
+
+  // Edit event modal
+  const [editingEvent, setEditingEvent] = useState(null);
+  const [editEventData, setEditEventData] = useState({});
+  const [editEventSaving, setEditEventSaving] = useState(false);
+
+  // Inline add forms
+  const [showAddAnnouncement, setShowAddAnnouncement] = useState(false);
+  const [showAddSpotlight, setShowAddSpotlight] = useState(false);
+  const [showAddRecap, setShowAddRecap] = useState(false);
+  const [showAddHighlight, setShowAddHighlight] = useState(false);
+  const [inlineFormSaving, setInlineFormSaving] = useState(false);
+
+  // Notification bell
+  const [showNotifDropdown, setShowNotifDropdown] = useState(false);
+
+  // Twitch stream channels management
+  const [newTwitchChannel, setNewTwitchChannel] = useState("");
+
   // Calendar state - start at the current month
   const now = new Date();
   const [calYear, setCalYear] = useState(now.getFullYear());
@@ -185,6 +210,118 @@ export default function GuildPage() {
       router.push("/");
     }
   }, [guild, router]);
+
+  // Read ?section= query param for search results page navigation
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const sectionParam = searchParams.get("section");
+    if (sectionParam) setActiveSection(sectionParam);
+  }, [searchParams]);
+
+  // Notification count — new content since last visit
+  const newContentCount = useMemo(() => {
+    if (typeof window === "undefined") return 0;
+    const lastVisited = localStorage.getItem(`last_visited_${slug}`);
+    if (!lastVisited) return 0;
+    const lastDate = new Date(lastVisited);
+    let count = 0;
+    announcements.forEach((a) => { if (a.created_at && new Date(a.created_at) > lastDate) count++; });
+    events.forEach((e) => { if (e.created_at && new Date(e.created_at) > lastDate) count++; });
+    newsletters.forEach((n) => { if (n.published_at && new Date(n.published_at) > lastDate) count++; });
+    return count;
+  }, [announcements, events, newsletters, slug]);
+
+  // Build notification items for dropdown
+  const notifItems = useMemo(() => {
+    if (typeof window === "undefined") return [];
+    const lastVisited = localStorage.getItem(`last_visited_${slug}`);
+    if (!lastVisited) return [];
+    const lastDate = new Date(lastVisited);
+    const items = [];
+    announcements.forEach((a) => { if (a.created_at && new Date(a.created_at) > lastDate) items.push({ type: "announcements", title: a.title, date: a.created_at }); });
+    events.forEach((e) => { if (e.created_at && new Date(e.created_at) > lastDate) items.push({ type: "events", title: e.title, date: e.created_at }); });
+    newsletters.forEach((n) => { if (n.published_at && new Date(n.published_at) > lastDate) items.push({ type: "newsletter", title: n.title, date: n.published_at }); });
+    items.sort((a, b) => new Date(b.date) - new Date(a.date));
+    return items.slice(0, 10);
+  }, [announcements, events, newsletters, slug]);
+
+  // Update last visited on page unload
+  useEffect(() => {
+    const updateLastVisited = () => localStorage.setItem(`last_visited_${slug}`, new Date().toISOString());
+    window.addEventListener("beforeunload", updateLastVisited);
+    return () => { updateLastVisited(); window.removeEventListener("beforeunload", updateLastVisited); };
+  }, [slug]);
+
+  // Edit event handlers
+  async function handleEditEvent(e) {
+    e.preventDefault();
+    setEditEventSaving(true);
+    try {
+      await fetch(`/api/events/${editingEvent}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editEventData),
+      });
+      setEditingEvent(null);
+      window.location.reload();
+    } catch { /* keep modal open */ } finally { setEditEventSaving(false); }
+  }
+
+  // Inline add handlers
+  async function handleInlineAdd(endpoint, data, closeFn) {
+    setInlineFormSaving(true);
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ guild: slug, ...data }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      closeFn();
+      window.location.reload();
+    } catch { /* keep form open */ } finally { setInlineFormSaving(false); }
+  }
+
+  // Tag management
+  async function removeTag(recapId, currentTopics, index) {
+    const newTopics = currentTopics.filter((_, i) => i !== index);
+    await inlineSave("/api/recaps", recapId, "topics", newTopics);
+    window.location.reload();
+  }
+
+  async function addTag(recapId, currentTopics) {
+    const tag = prompt("Enter new topic tag:");
+    if (tag && tag.trim()) {
+      const newTopics = [...(currentTopics || []), tag.trim()];
+      await inlineSave("/api/recaps", recapId, "topics", newTopics);
+      window.location.reload();
+    }
+  }
+
+  // Twitch channel management
+  async function addTwitchChannel() {
+    if (!newTwitchChannel.trim()) return;
+    const current = settings?.twitch_channels || [];
+    const updated = [...current, newTwitchChannel.trim().toLowerCase()];
+    await fetch("/api/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ guild: slug, twitch_channels: updated }),
+    });
+    setNewTwitchChannel("");
+    window.location.reload();
+  }
+
+  async function removeTwitchChannel(channel) {
+    const current = settings?.twitch_channels || [];
+    const updated = current.filter((c) => c !== channel);
+    await fetch("/api/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ guild: slug, twitch_channels: updated }),
+    });
+    window.location.reload();
+  }
 
   // Build ordered nav items based on settings.section_order
   // (Must be before any early returns to satisfy React rules of hooks)
@@ -436,9 +573,22 @@ export default function GuildPage() {
           </div>
           <SearchPanel guild={slug} onNavigate={showSection} />
           <div className="topbar-right">
-            <div className="notif-btn">
+            <div className="notif-btn" onClick={() => setShowNotifDropdown(!showNotifDropdown)}>
               {"\ud83d\udd14"}
-              <div className="notif-dot" />
+              {newContentCount > 0 && <div className="notif-dot">{newContentCount}</div>}
+              {showNotifDropdown && (
+                <div className="notif-dropdown" onClick={(e) => e.stopPropagation()}>
+                  <div className="notif-header">Notifications</div>
+                  {notifItems.length > 0 ? notifItems.map((item, idx) => (
+                    <div key={idx} className="notif-item" onClick={() => { setShowNotifDropdown(false); showSection(item.type); }}>
+                      <div className="notif-item-title">{item.title}</div>
+                      <div className="notif-item-meta">{item.type} {"\u00b7"} {formatDateShort(item.date?.split("T")[0])}</div>
+                    </div>
+                  )) : (
+                    <div className="notif-empty">No new content since your last visit</div>
+                  )}
+                </div>
+              )}
             </div>
             <div className="user-chip">
               {user?.avatar_url ? (
@@ -731,11 +881,16 @@ export default function GuildPage() {
         <section className={`page-section ${activeSection === "announcements" ? "active" : ""}`}>
           <div className="section-header">
             <h2 className="section-title">{"\ud83d\udce3"} Announcements</h2>
+            {userCanEdit && (
+              <button className="btn-add-inline" onClick={() => setShowAddAnnouncement(true)}>+ New Announcement</button>
+            )}
           </div>
           {announcements.length > 0 ? (
             announcements.map((ann, i) => (
               <div key={ann.id || i} className={`ann-item ${ann.pinned ? "pinned" : ""}`}>
-                <div className="ann-icon">{ann.icon || "\ud83d\udce3"}</div>
+                <div className="ann-icon">
+                  <InlineEditor value={ann.icon || "\ud83d\udce3"} canEdit={userCanEdit} onSave={(v) => inlineSave("/api/announcements", ann.id, "icon", v)} as="span" />
+                </div>
                 <div className="ann-body">
                   <div className="ann-title">
                     <InlineEditor value={ann.title} canEdit={userCanEdit} onSave={(v) => inlineSave("/api/announcements", ann.id, "title", v)} as="span" />
@@ -846,7 +1001,27 @@ export default function GuildPage() {
                     <InlineEditor value={evt.title} canEdit={userCanEdit} onSave={(v) => inlineSave("/api/events", evt.id, "title", v)} as="div" className="event-name" />
                     <div className="event-time">{"\ud83d\udd52"} {evt.event_time} {"\u00b7"} {evt.location}</div>
                     <InlineEditor value={evt.description} canEdit={userCanEdit} onSave={(v) => inlineSave("/api/events", evt.id, "description", v)} as="div" className="event-desc" multiline />
-                    <AddToCalendar event={evt} compact />
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "8px" }}>
+                      <AddToCalendar event={evt} compact />
+                      {userCanEdit && (
+                        <button
+                          className="btn-add-inline"
+                          style={{ fontSize: "11px", padding: "4px 10px" }}
+                          onClick={() => {
+                            setEditingEvent(evt.id);
+                            setEditEventData({
+                              title: evt.title || "",
+                              event_date: evt.event_date || "",
+                              event_time: evt.event_time || "",
+                              location: evt.location || "",
+                              description: evt.description || "",
+                            });
+                          }}
+                        >
+                          Edit
+                        </button>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -860,13 +1035,30 @@ export default function GuildPage() {
         <section className={`page-section ${activeSection === "spotlight" ? "active" : ""}`}>
           <div className="section-header">
             <h2 className="section-title">{"\u2728"} Guildie Spotlight</h2>
+            {userCanEdit && (
+              <button className="btn-add-inline" onClick={() => setShowAddSpotlight(true)}>+ Set Spotlight</button>
+            )}
           </div>
           <p style={{ color: "var(--guild-text2)", marginBottom: "24px" }}>
             Each week we celebrate an outstanding member of the {guild.name}.
           </p>
           {spotlight ? (
             <div className="spotlight-card">
-              <div className="spotlight-avatar">{"\ud83c\udf38"}</div>
+              <div className="spotlight-avatar">
+                {spotlight.member_avatar ? (
+                  <img src={spotlight.member_avatar} alt={spotlight.member_name} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
+                ) : "\ud83c\udf38"}
+                {userCanEdit && (
+                  <div style={{ marginTop: "8px" }}>
+                    <ImageUpload
+                      currentUrl={spotlight.member_avatar}
+                      onUpload={async (url) => { await inlineSave("/api/spotlight", spotlight.id, "member_avatar", url); window.location.reload(); }}
+                      label="Upload Avatar"
+                      small
+                    />
+                  </div>
+                )}
+              </div>
               <div className="spotlight-content">
                 <div className="spotlight-week">{"\u2728"} {spotlight.featured_week || "This Week"} {"\u2014"} Current Spotlight</div>
                 <InlineEditor value={spotlight.member_name} canEdit={userCanEdit} onSave={(v) => inlineSave("/api/spotlight", spotlight.id, "member_name", v)} as="div" className="spotlight-name" />
@@ -889,20 +1081,41 @@ export default function GuildPage() {
           <h3 style={{ fontFamily: "var(--font-playfair), serif", fontSize: "18px", fontWeight: 700, color: "var(--guild-text)", margin: "32px 0 16px" }}>Past Spotlights</h3>
           {pastSpotlights.length > 0 ? (
             <div className="grid-2">
-              {pastSpotlights.map((sp, i) => (
-                <div key={sp.id || i} className="card">
-                  <div className="card-top" />
-                  <div className="card-body">
-                    <span className="card-tag">{sp.featured_week || formatDateMedium(sp.created_at?.split("T")[0])}</span>
-                    <div className="card-title">{sp.member_name}</div>
-                    <div className="card-excerpt">{sp.bio}</div>
-                    <div className="card-meta">
-                      <span className="card-date">{sp.achievement || ""}</span>
-                      <button className="read-btn">View {"\u2192"}</button>
+              {pastSpotlights.map((sp, i) => {
+                const isExpanded = expandedSpotlight === sp.id;
+                return (
+                  <div
+                    key={sp.id || i}
+                    className={`card ${isExpanded ? "card-expanded" : ""}`}
+                    onClick={() => setExpandedSpotlight(isExpanded ? null : sp.id)}
+                    style={{ cursor: "pointer" }}
+                  >
+                    <div className="card-top" />
+                    <div className="card-body">
+                      <span className="card-tag">{sp.featured_week || formatDateMedium(sp.created_at?.split("T")[0])}</span>
+                      <div className="card-title">{sp.member_name}</div>
+                      {isExpanded ? (
+                        <>
+                          <div className="card-excerpt">{sp.bio}</div>
+                          {sp.member_handle && <div style={{ fontSize: "13px", color: "var(--guild-muted)", marginTop: "8px" }}>@{sp.member_handle}</div>}
+                          {sp.achievement && <div className="spotlight-achievement" style={{ marginTop: "8px" }}>{guild.emoji} {sp.achievement}</div>}
+                          {sp.twitch_url && (
+                            <a href={sp.twitch_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: "13px", color: "var(--a)", marginTop: "8px", display: "inline-block" }} onClick={(e) => e.stopPropagation()}>
+                              View on Twitch {"\u2192"}
+                            </a>
+                          )}
+                        </>
+                      ) : (
+                        <div className="card-excerpt">{sp.bio ? (sp.bio.length > 100 ? sp.bio.substring(0, 100) + "..." : sp.bio) : ""}</div>
+                      )}
+                      <div className="card-meta">
+                        <span className="card-date">{sp.achievement || ""}</span>
+                        <button className="read-btn">{isExpanded ? "Collapse" : "View"} {"\u2192"}</button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <p style={{ color: "var(--guild-muted)", padding: "16px 0" }}>No past spotlights yet.</p>
@@ -913,23 +1126,49 @@ export default function GuildPage() {
         <section className={`page-section ${activeSection === "recaps" ? "active" : ""}`}>
           <div className="section-header">
             <h2 className="section-title">{"\ud83c\udfdb\ufe0f"} Guild Hall Recaps</h2>
+            {userCanEdit && (
+              <button className="btn-add-inline" onClick={() => setShowAddRecap(true)}>+ Add Recap</button>
+            )}
           </div>
           <p style={{ color: "var(--guild-text2)", marginBottom: "24px" }}>
             Missed a meeting? Catch up on everything discussed at our monthly Guild Hall sessions.
           </p>
           {recaps.length > 0 ? (
-            recaps.map((recap, i) => (
-              <div key={recap.id || i} className="recap-card">
-                <div className="recap-month">{formatMonthYear(recap.meeting_date)}</div>
-                <InlineEditor value={recap.title} canEdit={userCanEdit} onSave={(v) => inlineSave("/api/recaps", recap.id, "title", v)} as="div" className="recap-title" />
-                <InlineEditor value={recap.summary} canEdit={userCanEdit} onSave={(v) => inlineSave("/api/recaps", recap.id, "summary", v)} as="div" className="recap-summary" multiline />
-                <div className="recap-topics">
-                  {(recap.topics || []).map((topic, j) => (
-                    <span key={j} className="topic-chip">{topic}</span>
-                  ))}
+            recaps.map((recap, i) => {
+              const isExpanded = expandedRecap === recap.id;
+              return (
+                <div
+                  key={recap.id || i}
+                  className={`recap-card ${isExpanded ? "recap-expanded" : ""}`}
+                  onClick={() => setExpandedRecap(isExpanded ? null : recap.id)}
+                  style={{ cursor: "pointer" }}
+                >
+                  <div className="recap-month">{formatMonthYear(recap.meeting_date)}</div>
+                  <InlineEditor value={recap.title} canEdit={userCanEdit} onSave={(v) => inlineSave("/api/recaps", recap.id, "title", v)} as="div" className="recap-title" />
+                  {isExpanded ? (
+                    <InlineEditor value={recap.summary} canEdit={userCanEdit} onSave={(v) => inlineSave("/api/recaps", recap.id, "summary", v)} as="div" className="recap-summary" multiline />
+                  ) : (
+                    <div className="recap-summary recap-summary-preview">
+                      {recap.summary ? (recap.summary.length > 120 ? recap.summary.substring(0, 120) + "..." : recap.summary) : ""}
+                      {recap.summary && recap.summary.length > 120 && <span className="recap-expand-hint">Click to read more</span>}
+                    </div>
+                  )}
+                  <div className="recap-topics" onClick={(e) => e.stopPropagation()}>
+                    {(recap.topics || []).map((topic, j) => (
+                      <span key={j} className="topic-chip">
+                        {topic}
+                        {userCanEdit && (
+                          <span className="chip-remove" onClick={() => removeTag(recap.id, recap.topics, j)}>{"\u00d7"}</span>
+                        )}
+                      </span>
+                    ))}
+                    {userCanEdit && (
+                      <span className="topic-chip add-chip" onClick={() => addTag(recap.id, recap.topics)}>+ Add Tag</span>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           ) : (
             <p style={{ color: "var(--guild-muted)", padding: "16px 0" }}>No Guild Hall recaps yet.</p>
           )}
@@ -939,19 +1178,51 @@ export default function GuildPage() {
         <section className={`page-section ${activeSection === "highlights" ? "active" : ""}`}>
           <div className="section-header">
             <h2 className="section-title">{"\ud83c\udf1f"} Guild Event Highlights</h2>
+            {userCanEdit && (
+              <button className="btn-add-inline" onClick={() => setShowAddHighlight(true)}>+ Add Highlight</button>
+            )}
           </div>
           {highlights.length > 0 ? (
             <div className="grid-3">
-              {highlights.map((hl, i) => (
-                <div key={hl.id || i} className="highlight-card">
-                  <div className="highlight-img">{hl.image_url ? <img src={hl.image_url} alt={hl.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : guild.emoji}</div>
-                  <div className="highlight-body">
-                    <div className="highlight-event">{hl.event_type}</div>
-                    <InlineEditor value={hl.title} canEdit={userCanEdit} onSave={(v) => inlineSave("/api/highlights", hl.id, "title", v)} as="div" className="highlight-title" />
-                    <div className="highlight-date">{formatDateShort(hl.event_date)}</div>
+              {highlights.map((hl, i) => {
+                const isExpanded = expandedHighlight === hl.id;
+                return (
+                  <div
+                    key={hl.id || i}
+                    className={`highlight-card ${isExpanded ? "highlight-expanded" : ""}`}
+                    onClick={() => setExpandedHighlight(isExpanded ? null : hl.id)}
+                    style={{ cursor: "pointer" }}
+                  >
+                    <div className="highlight-img">
+                      {hl.image_url ? <img src={hl.image_url} alt={hl.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : guild.emoji}
+                      {userCanEdit && isExpanded && (
+                        <div style={{ position: "absolute", bottom: "8px", left: "8px" }} onClick={(e) => e.stopPropagation()}>
+                          <ImageUpload
+                            currentUrl={hl.image_url}
+                            onUpload={async (url) => { await inlineSave("/api/highlights", hl.id, "image_url", url); window.location.reload(); }}
+                            label="Upload Image"
+                            small
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div className="highlight-body">
+                      <div className="highlight-event">{hl.event_type}</div>
+                      <InlineEditor value={hl.title} canEdit={userCanEdit} onSave={(v) => inlineSave("/api/highlights", hl.id, "title", v)} as="div" className="highlight-title" />
+                      <div className="highlight-date">{formatDateShort(hl.event_date)}</div>
+                      {isExpanded && (
+                        <div className="highlight-expanded-content">
+                          {hl.description ? (
+                            <InlineEditor value={hl.description} canEdit={userCanEdit} onSave={(v) => inlineSave("/api/highlights", hl.id, "description", v)} as="div" className="highlight-desc" multiline />
+                          ) : (
+                            <p style={{ color: "var(--guild-muted)", fontSize: "13px" }}>No description available.</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <p style={{ color: "var(--guild-muted)", padding: "16px 0" }}>No highlights yet.</p>
@@ -971,20 +1242,66 @@ export default function GuildPage() {
                 LIVE
               </div>
             </div>
-            <div className="stream-placeholder">
-              <div style={{ fontSize: "48px", opacity: 0.4 }}>{"\ud83d\udcfa"}</div>
-              <div style={{ fontWeight: 600, color: "var(--b)" }}>
-                Twitch Team: twitch.tv/team/{guild.slug === "women" ? "womensguild" : guild.slug + "guild"}
+
+            {/* Twitch Stream Embeds */}
+            {(settings?.twitch_channels || []).length > 0 ? (
+              <div className="streams-grid">
+                {settings.twitch_channels.map((channel) => (
+                  <div key={channel} className="stream-embed">
+                    <iframe
+                      src={`https://player.twitch.tv/?channel=${channel}&parent=${typeof window !== "undefined" ? window.location.hostname : "localhost"}`}
+                      height="300"
+                      width="100%"
+                      allowFullScreen
+                      style={{ border: "none", borderRadius: "8px" }}
+                    />
+                    <div style={{ fontSize: "12px", color: "var(--guild-muted)", marginTop: "6px", textAlign: "center" }}>
+                      {channel}
+                      {userCanEdit && (
+                        <span className="chip-remove" style={{ marginLeft: "8px", cursor: "pointer" }} onClick={() => removeTwitchChannel(channel)}>{"\u00d7"}</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
-              <a
-                href={`https://twitch.tv/team/${guild.slug === "women" ? "womensguild" : guild.slug + "guild"}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: "var(--b)", textDecoration: "underline", marginTop: "8px" }}
-              >
-                Open Twitch Team {"\u2192"}
-              </a>
-            </div>
+            ) : (
+              <div className="stream-placeholder">
+                <div style={{ fontSize: "48px", opacity: 0.4 }}>{"\ud83d\udcfa"}</div>
+                <div style={{ fontWeight: 600, color: "var(--b)" }}>
+                  Twitch Team: twitch.tv/team/{guild.slug === "women" ? "womensguild" : guild.slug + "guild"}
+                </div>
+                <a
+                  href={`https://twitch.tv/team/${guild.slug === "women" ? "womensguild" : guild.slug + "guild"}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: "var(--b)", textDecoration: "underline", marginTop: "8px" }}
+                >
+                  Open Twitch Team {"\u2192"}
+                </a>
+              </div>
+            )}
+
+            {/* Admin: Add/manage channels */}
+            {userCanEdit && (
+              <div style={{ marginTop: "16px", padding: "14px", border: "1px solid var(--guild-border)", borderRadius: "12px", background: "rgba(255,255,255,0.02)" }}>
+                <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--guild-text)", marginBottom: "8px" }}>Manage Twitch Channels</div>
+                <div style={{ display: "flex", gap: "8px" }}>
+                  <input
+                    type="text"
+                    value={newTwitchChannel}
+                    onChange={(e) => setNewTwitchChannel(e.target.value)}
+                    placeholder="Channel name (e.g. ninja)"
+                    style={{
+                      flex: 1, padding: "8px 12px", borderRadius: "8px",
+                      background: "rgba(255,255,255,0.05)", border: "1px solid var(--guild-border)",
+                      color: "var(--guild-text)", fontSize: "13px", fontFamily: "inherit"
+                    }}
+                    onKeyDown={(e) => { if (e.key === "Enter") addTwitchChannel(); }}
+                  />
+                  <button className="btn-add-inline" onClick={addTwitchChannel}>Add Channel</button>
+                </div>
+              </div>
+            )}
           </div>
         </section>
 
@@ -1071,6 +1388,249 @@ export default function GuildPage() {
                 <button type="button" className="btn-cancel" onClick={() => { setShowAddEvent(false); setAddEventDate(null); }}>Cancel</button>
                 <button type="submit" className="btn-save" disabled={addEventSaving}>
                   {addEventSaving ? "Creating..." : "Create Event"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Event Modal — admin only */}
+      {editingEvent && (
+        <div className="event-popup-overlay show" onClick={() => setEditingEvent(null)}>
+          <div className="event-popup" onClick={(e) => e.stopPropagation()}>
+            <div className="popup-header">
+              <div className="popup-date-title">Edit Event</div>
+              <div className="popup-close" onClick={() => setEditingEvent(null)}>{"\u2715"}</div>
+            </div>
+            <form className="add-event-form" onSubmit={handleEditEvent}>
+              <label>
+                Event Title
+                <input type="text" value={editEventData.title || ""} onChange={(e) => setEditEventData({ ...editEventData, title: e.target.value })} required />
+              </label>
+              <div className="form-row">
+                <label>
+                  Date
+                  <input type="date" value={editEventData.event_date || ""} onChange={(e) => setEditEventData({ ...editEventData, event_date: e.target.value })} />
+                </label>
+                <label>
+                  Time
+                  <input type="text" value={editEventData.event_time || ""} onChange={(e) => setEditEventData({ ...editEventData, event_time: e.target.value })} />
+                </label>
+              </div>
+              <label>
+                Location
+                <input type="text" value={editEventData.location || ""} onChange={(e) => setEditEventData({ ...editEventData, location: e.target.value })} />
+              </label>
+              <label>
+                Description
+                <textarea value={editEventData.description || ""} onChange={(e) => setEditEventData({ ...editEventData, description: e.target.value })} rows={3} />
+              </label>
+              <div className="add-event-btns">
+                <button type="button" className="btn-cancel" onClick={() => setEditingEvent(null)}>Cancel</button>
+                <button type="submit" className="btn-save" disabled={editEventSaving}>
+                  {editEventSaving ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Announcement Modal */}
+      {showAddAnnouncement && (
+        <div className="event-popup-overlay show" onClick={() => setShowAddAnnouncement(false)}>
+          <div className="event-popup" onClick={(e) => e.stopPropagation()}>
+            <div className="popup-header">
+              <div className="popup-date-title">New Announcement</div>
+              <div className="popup-close" onClick={() => setShowAddAnnouncement(false)}>{"\u2715"}</div>
+            </div>
+            <form className="add-event-form" onSubmit={(e) => {
+              e.preventDefault();
+              const form = e.target;
+              handleInlineAdd("/api/announcements", {
+                title: form.title.value.trim(),
+                content: form.content.value.trim(),
+                icon: form.icon.value.trim() || "\ud83d\udce3",
+                pinned: form.pinned.checked,
+              }, () => setShowAddAnnouncement(false));
+            }}>
+              <div className="form-row">
+                <label style={{ flex: "0 0 80px" }}>
+                  Icon
+                  <input name="icon" type="text" defaultValue={"\ud83d\udce3"} style={{ textAlign: "center" }} />
+                </label>
+                <label style={{ flex: 1 }}>
+                  Title
+                  <input name="title" type="text" placeholder="Announcement title" required />
+                </label>
+              </div>
+              <label>
+                Content
+                <textarea name="content" placeholder="Announcement content..." rows={4} required />
+              </label>
+              <label style={{ display: "flex", alignItems: "center", gap: "8px", flexDirection: "row" }}>
+                <input name="pinned" type="checkbox" />
+                <span style={{ fontSize: "13px", color: "var(--guild-text)" }}>Pin this announcement</span>
+              </label>
+              <div className="add-event-btns">
+                <button type="button" className="btn-cancel" onClick={() => setShowAddAnnouncement(false)}>Cancel</button>
+                <button type="submit" className="btn-save" disabled={inlineFormSaving}>
+                  {inlineFormSaving ? "Creating..." : "Create Announcement"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Spotlight Modal */}
+      {showAddSpotlight && (
+        <div className="event-popup-overlay show" onClick={() => setShowAddSpotlight(false)}>
+          <div className="event-popup" onClick={(e) => e.stopPropagation()}>
+            <div className="popup-header">
+              <div className="popup-date-title">Set New Spotlight</div>
+              <div className="popup-close" onClick={() => setShowAddSpotlight(false)}>{"\u2715"}</div>
+            </div>
+            <form className="add-event-form" onSubmit={(e) => {
+              e.preventDefault();
+              const form = e.target;
+              handleInlineAdd("/api/spotlight", {
+                member_name: form.member_name.value.trim(),
+                member_handle: form.member_handle.value.trim(),
+                bio: form.bio.value.trim(),
+                achievement: form.achievement.value.trim(),
+                featured_week: form.featured_week.value.trim(),
+                twitch_url: form.twitch_url.value.trim(),
+              }, () => setShowAddSpotlight(false));
+            }}>
+              <div className="form-row">
+                <label>
+                  Member Name
+                  <input name="member_name" type="text" placeholder="e.g. GuildMaster2026" required />
+                </label>
+                <label>
+                  Handle
+                  <input name="member_handle" type="text" placeholder="@username" />
+                </label>
+              </div>
+              <label>
+                Bio
+                <textarea name="bio" placeholder="Tell us about this guildie..." rows={3} required />
+              </label>
+              <div className="form-row">
+                <label>
+                  Achievement
+                  <input name="achievement" type="text" placeholder="e.g. Top Contributor" />
+                </label>
+                <label>
+                  Featured Week
+                  <input name="featured_week" type="text" placeholder="e.g. Week of Feb 24" />
+                </label>
+              </div>
+              <label>
+                Twitch URL
+                <input name="twitch_url" type="text" placeholder="https://twitch.tv/username" />
+              </label>
+              <div className="add-event-btns">
+                <button type="button" className="btn-cancel" onClick={() => setShowAddSpotlight(false)}>Cancel</button>
+                <button type="submit" className="btn-save" disabled={inlineFormSaving}>
+                  {inlineFormSaving ? "Creating..." : "Set Spotlight"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Recap Modal */}
+      {showAddRecap && (
+        <div className="event-popup-overlay show" onClick={() => setShowAddRecap(false)}>
+          <div className="event-popup" onClick={(e) => e.stopPropagation()}>
+            <div className="popup-header">
+              <div className="popup-date-title">Add Guild Hall Recap</div>
+              <div className="popup-close" onClick={() => setShowAddRecap(false)}>{"\u2715"}</div>
+            </div>
+            <form className="add-event-form" onSubmit={(e) => {
+              e.preventDefault();
+              const form = e.target;
+              const topicsRaw = form.topics.value.trim();
+              handleInlineAdd("/api/recaps", {
+                title: form.title.value.trim(),
+                meeting_date: form.meeting_date.value,
+                summary: form.summary.value.trim(),
+                topics: topicsRaw ? topicsRaw.split(",").map((t) => t.trim()).filter(Boolean) : [],
+              }, () => setShowAddRecap(false));
+            }}>
+              <div className="form-row">
+                <label>
+                  Title
+                  <input name="title" type="text" placeholder="e.g. February Guild Hall" required />
+                </label>
+                <label>
+                  Meeting Date
+                  <input name="meeting_date" type="date" required />
+                </label>
+              </div>
+              <label>
+                Summary
+                <textarea name="summary" placeholder="What was discussed at the meeting?" rows={4} required />
+              </label>
+              <label>
+                Topics (comma-separated)
+                <input name="topics" type="text" placeholder="e.g. Events, Moderation, New Members" />
+              </label>
+              <div className="add-event-btns">
+                <button type="button" className="btn-cancel" onClick={() => setShowAddRecap(false)}>Cancel</button>
+                <button type="submit" className="btn-save" disabled={inlineFormSaving}>
+                  {inlineFormSaving ? "Creating..." : "Add Recap"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Highlight Modal */}
+      {showAddHighlight && (
+        <div className="event-popup-overlay show" onClick={() => setShowAddHighlight(false)}>
+          <div className="event-popup" onClick={(e) => e.stopPropagation()}>
+            <div className="popup-header">
+              <div className="popup-date-title">Add Guild Highlight</div>
+              <div className="popup-close" onClick={() => setShowAddHighlight(false)}>{"\u2715"}</div>
+            </div>
+            <form className="add-event-form" onSubmit={(e) => {
+              e.preventDefault();
+              const form = e.target;
+              handleInlineAdd("/api/highlights", {
+                title: form.title.value.trim(),
+                event_type: form.event_type.value.trim(),
+                event_date: form.event_date.value,
+                description: form.description.value.trim(),
+              }, () => setShowAddHighlight(false));
+            }}>
+              <div className="form-row">
+                <label>
+                  Title
+                  <input name="title" type="text" placeholder="e.g. Community Game Night" required />
+                </label>
+                <label>
+                  Event Type
+                  <input name="event_type" type="text" placeholder="e.g. Game Night, Workshop" />
+                </label>
+              </div>
+              <label>
+                Event Date
+                <input name="event_date" type="date" />
+              </label>
+              <label>
+                Description
+                <textarea name="description" placeholder="Describe this highlight..." rows={3} />
+              </label>
+              <div className="add-event-btns">
+                <button type="button" className="btn-cancel" onClick={() => setShowAddHighlight(false)}>Cancel</button>
+                <button type="submit" className="btn-save" disabled={inlineFormSaving}>
+                  {inlineFormSaving ? "Creating..." : "Add Highlight"}
                 </button>
               </div>
             </form>
