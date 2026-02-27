@@ -161,6 +161,44 @@ export default function GuildPage() {
     }
   }, [guild, router]);
 
+  // Build ordered nav items based on settings.section_order
+  // (Must be before any early returns to satisfy React rules of hooks)
+  const orderedNavItems = useMemo(() => {
+    const sectionOrder = settings?.section_order;
+    const sectionVisibility = settings?.section_visibility;
+    if (!sectionOrder || sectionOrder.length === 0) return NAV_ITEMS;
+
+    // Build reordered items based on saved order
+    const ordered = [];
+    sectionOrder.forEach((id) => {
+      // Skip hidden sections
+      if (sectionVisibility && sectionVisibility[id] === false) return;
+      const item = NAV_ITEMS.find((n) => n.id === id);
+      if (item) ordered.push(item);
+    });
+    // Add any items not in the saved order (like dividers, admin, games-link)
+    NAV_ITEMS.forEach((item) => {
+      if (item.divider || item.external || item.id === "admin") {
+        // Keep dividers/special items — but only add if not already included
+        if (!ordered.find((o) => o.id === item.id)) {
+          // Don't add dividers; they're structural
+        }
+      } else if (!ordered.find((o) => o.id === item.id)) {
+        // If hidden via visibility, skip
+        if (sectionVisibility && sectionVisibility[item.id] === false) return;
+        ordered.push(item);
+      }
+    });
+    // Add special items at the end
+    const specialItems = NAV_ITEMS.filter((item) => item.external || item.id === "admin");
+    specialItems.forEach((item) => {
+      if (!ordered.find((o) => o.id === item.id)) {
+        ordered.push(item);
+      }
+    });
+    return ordered;
+  }, [settings]);
+
   // Build a set of days that have events for the current calendar month
   const eventDaySet = useMemo(() => {
     const set = new Set();
@@ -275,43 +313,6 @@ export default function GuildPage() {
 
   // The newsletter to display in the read view
   const displayNewsletter = selectedNewsletter || latestNewsletter;
-
-  // Build ordered nav items based on settings.section_order
-  const orderedNavItems = useMemo(() => {
-    const sectionOrder = settings?.section_order;
-    const sectionVisibility = settings?.section_visibility;
-    if (!sectionOrder || sectionOrder.length === 0) return NAV_ITEMS;
-
-    // Build reordered items based on saved order
-    const ordered = [];
-    sectionOrder.forEach((id) => {
-      // Skip hidden sections
-      if (sectionVisibility && sectionVisibility[id] === false) return;
-      const item = NAV_ITEMS.find((n) => n.id === id);
-      if (item) ordered.push(item);
-    });
-    // Add any items not in the saved order (like dividers, admin, games-link)
-    NAV_ITEMS.forEach((item) => {
-      if (item.divider || item.external || item.id === "admin") {
-        // Keep dividers/special items — but only add if not already included
-        if (!ordered.find((o) => o.id === item.id)) {
-          // Don't add dividers; they're structural
-        }
-      } else if (!ordered.find((o) => o.id === item.id)) {
-        // If hidden via visibility, skip
-        if (sectionVisibility && sectionVisibility[item.id] === false) return;
-        ordered.push(item);
-      }
-    });
-    // Add special items at the end
-    const specialItems = NAV_ITEMS.filter((item) => item.external || item.id === "admin");
-    specialItems.forEach((item) => {
-      if (!ordered.find((o) => o.id === item.id)) {
-        ordered.push(item);
-      }
-    });
-    return ordered;
-  }, [settings]);
 
   return (
     <div style={guildStyle}>
