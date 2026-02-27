@@ -106,6 +106,9 @@ export default function GuildPage() {
   const [activeSection, setActiveSection] = useState("home");
   const [showEventPopup, setShowEventPopup] = useState(false);
   const [popupDay, setPopupDay] = useState(null);
+  const [showAddEvent, setShowAddEvent] = useState(false);
+  const [addEventDate, setAddEventDate] = useState(null);
+  const [addEventSaving, setAddEventSaving] = useState(false);
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [selectedNewsletter, setSelectedNewsletter] = useState(null);
@@ -208,20 +211,23 @@ export default function GuildPage() {
     return ordered;
   }, [settings]);
 
-  // Build a set of days that have events for the current calendar month
-  const eventDaySet = useMemo(() => {
-    const set = new Set();
+  // Build a map of day → events for the current calendar month
+  const eventsByDay = useMemo(() => {
+    const map = {};
     events.forEach((evt) => {
       if (!evt.event_date) return;
-      const d = new Date(evt.event_date + "T00:00:00");
+      const d = safeDate(evt.event_date);
+      if (!d || isNaN(d)) return;
       if (d.getFullYear() === calYear && d.getMonth() === calMonth) {
-        set.add(d.getDate());
+        const day = d.getDate();
+        if (!map[day]) map[day] = [];
+        map[day].push(evt);
       }
     });
-    return set;
+    return map;
   }, [events, calYear, calMonth]);
 
-  // Build calendar days array
+  // Build calendar days array with previous/next month trailing days
   const calDays = useMemo(() => {
     const days = [];
     const firstDayOfWeek = new Date(calYear, calMonth, 1).getDay();
@@ -229,19 +235,28 @@ export default function GuildPage() {
     const today = new Date();
     const isCurrentMonth = today.getFullYear() === calYear && today.getMonth() === calMonth;
 
-    // Empty cells for days before the 1st
-    for (let i = 0; i < firstDayOfWeek; i++) {
-      days.push({ day: "", empty: true });
+    // Previous month trailing days
+    const prevMonthDays = calMonth === 0 ? getDaysInMonth(calYear - 1, 11) : getDaysInMonth(calYear, calMonth - 1);
+    for (let i = firstDayOfWeek - 1; i >= 0; i--) {
+      days.push({ day: prevMonthDays - i, otherMonth: true, events: [] });
     }
+    // Current month days
     for (let d = 1; d <= daysInMonth; d++) {
       days.push({
         day: d,
-        hasEvent: eventDaySet.has(d),
+        events: eventsByDay[d] || [],
         isToday: isCurrentMonth && d === today.getDate(),
       });
     }
+    // Next month trailing days to fill the last row
+    const remaining = 7 - (days.length % 7);
+    if (remaining < 7) {
+      for (let d = 1; d <= remaining; d++) {
+        days.push({ day: d, otherMonth: true, events: [] });
+      }
+    }
     return days;
-  }, [calYear, calMonth, eventDaySet]);
+  }, [calYear, calMonth, eventsByDay]);
 
   // Show loading state while checking auth
   if (!authChecked || !guild) {
@@ -278,15 +293,48 @@ export default function GuildPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function showDayEvents(day) {
-    const eventsForDay = events.filter((e) => {
-      if (!e.event_date) return false;
-      const d = new Date(e.event_date + "T00:00:00");
-      return d.getFullYear() === calYear && d.getMonth() === calMonth && d.getDate() === day;
-    });
-    if (eventsForDay.length > 0) {
-      setPopupDay({ day, events: eventsForDay });
+  function showDayEvents(day, dayEvents) {
+    if (dayEvents && dayEvents.length > 0) {
+      setPopupDay({ day, events: dayEvents });
       setShowEventPopup(true);
+    }
+  }
+
+  function openAddEvent(day) {
+    const monthStr = String(calMonth + 1).padStart(2, "0");
+    const dayStr = String(day).padStart(2, "0");
+    setAddEventDate(`${calYear}-${monthStr}-${dayStr}`);
+    setShowAddEvent(true);
+  }
+
+  async function handleAddEvent(e) {
+    e.preventDefault();
+    const form = e.target;
+    const data = {
+      guild: slug,
+      title: form.title.value.trim(),
+      event_date: addEventDate,
+      event_time: form.event_time.value.trim() || "7:00 PM EST",
+      location: form.location.value.trim() || "Discord",
+      description: form.description.value.trim(),
+    };
+    if (!data.title) return;
+    setAddEventSaving(true);
+    try {
+      const res = await fetch("/api/events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Failed to create event");
+      setShowAddEvent(false);
+      setAddEventDate(null);
+      // Reload the page to refresh data
+      window.location.reload();
+    } catch (err) {
+      console.error("Error creating event:", err);
+    } finally {
+      setAddEventSaving(false);
     }
   }
 
@@ -696,33 +744,78 @@ export default function GuildPage() {
             <h2 className="section-title">{"\ud83d\udcc5"} Upcoming Events</h2>
           </div>
 
-          {/* Calendar Widget */}
+          {/* Full-Size Calendar Grid */}
           <div className="cal-widget">
             <div className="cal-header">
               <div className="cal-title">{getCalendarMonthName(calYear, calMonth)}</div>
-              <div style={{ display: "flex", gap: "8px" }}>
+              <div className="cal-nav">
                 <div className="cal-nav-btn" onClick={goCalPrev}>&lt;</div>
                 <div className="cal-nav-btn" onClick={goCalNext}>&gt;</div>
               </div>
             </div>
             <div className="cal-grid">
-              <div className="cal-days-header">
-                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
-                  <div key={d} className="cal-day-name">{d}</div>
-                ))}
-              </div>
-              <div className="cal-dates">
-                {calDays.map((cell, i) => (
+              {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map((d) => (
+                <div key={d} className="cal-day-name">{d}</div>
+              ))}
+              {calDays.map((cell, i) => {
+                const cellEvents = cell.events || [];
+                const maxShow = 2;
+                const extraCount = cellEvents.length - maxShow;
+                return (
                   <div
                     key={i}
-                    className={`cal-date ${cell.empty ? "other-month" : ""} ${cell.isToday ? "today" : ""} ${cell.hasEvent ? "has-event" : ""}`}
-                    onClick={() => cell.hasEvent && showDayEvents(cell.day)}
-                    style={cell.hasEvent ? { cursor: "pointer" } : {}}
+                    className={`cal-cell ${cell.otherMonth ? "other-month" : ""} ${cell.isToday ? "today" : ""} ${userCanEdit && !cell.otherMonth ? "admin-cell" : ""}`}
+                    onClick={() => {
+                      if (cell.otherMonth) return;
+                      if (cellEvents.length > 0) {
+                        showDayEvents(cell.day, cellEvents);
+                      }
+                    }}
                   >
-                    {cell.day}
+                    <div className="cal-cell-day">{cell.day}</div>
+                    {!cell.otherMonth && (
+                      <div className="cal-cell-events">
+                        {cellEvents.slice(0, maxShow).map((evt, j) => (
+                          <div
+                            key={evt.id || j}
+                            className="cal-cell-evt"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              showDayEvents(cell.day, cellEvents);
+                            }}
+                            title={`${evt.title} — ${evt.event_time || ""}`}
+                          >
+                            {evt.title}
+                          </div>
+                        ))}
+                        {extraCount > 0 && (
+                          <div
+                            className="cal-cell-more"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              showDayEvents(cell.day, cellEvents);
+                            }}
+                          >
+                            +{extraCount} more
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {userCanEdit && !cell.otherMonth && (
+                      <div
+                        className="cal-cell-add"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openAddEvent(cell.day);
+                        }}
+                        title="Add event"
+                      >
+                        +
+                      </div>
+                    )}
                   </div>
-                ))}
-              </div>
+                );
+              })}
             </div>
           </div>
 
@@ -896,7 +989,7 @@ export default function GuildPage() {
         </section>
       </div>
 
-      {/* Event Popup Overlay */}
+      {/* Event Popup Overlay — view events for a day */}
       {showEventPopup && popupDay && (
         <div className="event-popup-overlay show" onClick={() => setShowEventPopup(false)}>
           <div className="event-popup" onClick={(e) => e.stopPropagation()}>
@@ -916,6 +1009,58 @@ export default function GuildPage() {
                 </div>
               ))}
             </div>
+            {userCanEdit && (
+              <div style={{ marginTop: "16px", paddingTop: "14px", borderTop: "1px solid var(--guild-border)" }}>
+                <button
+                  className="btn-primary"
+                  style={{ width: "100%", padding: "10px", fontSize: "14px" }}
+                  onClick={() => {
+                    setShowEventPopup(false);
+                    openAddEvent(popupDay.day);
+                  }}
+                >
+                  + Add Event on This Day
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Add Event Modal — admin only */}
+      {showAddEvent && addEventDate && (
+        <div className="event-popup-overlay show" onClick={() => { setShowAddEvent(false); setAddEventDate(null); }}>
+          <div className="event-popup" onClick={(e) => e.stopPropagation()}>
+            <div className="popup-header">
+              <div className="popup-date-title">Add Event — {addEventDate}</div>
+              <div className="popup-close" onClick={() => { setShowAddEvent(false); setAddEventDate(null); }}>{"\u2715"}</div>
+            </div>
+            <form className="add-event-form" onSubmit={handleAddEvent}>
+              <label>
+                Event Title
+                <input name="title" type="text" placeholder="e.g. Guild Hall Meeting" required />
+              </label>
+              <div className="form-row">
+                <label>
+                  Time
+                  <input name="event_time" type="text" placeholder="7:00 PM EST" />
+                </label>
+                <label>
+                  Location
+                  <input name="location" type="text" placeholder="Discord" />
+                </label>
+              </div>
+              <label>
+                Description
+                <textarea name="description" placeholder="What is this event about?" rows={3} />
+              </label>
+              <div className="add-event-btns">
+                <button type="button" className="btn-cancel" onClick={() => { setShowAddEvent(false); setAddEventDate(null); }}>Cancel</button>
+                <button type="submit" className="btn-save" disabled={addEventSaving}>
+                  {addEventSaving ? "Creating..." : "Create Event"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

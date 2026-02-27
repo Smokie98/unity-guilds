@@ -455,28 +455,37 @@ a { color: inherit; text-decoration: none; }
 .archive-title { font-family: 'Playfair Display', serif; font-size: 15px; font-weight: 700; margin-bottom: 6px; }
 .archive-preview { font-size: 12px; color: var(--guild-text2); line-height: 1.5; }
 
-/* Calendar Widget */
-.cal-widget { background: var(--grad-card); border: 1px solid var(--guild-border); border-radius: 20px; padding: 24px; margin-bottom: 24px; }
-.cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
-.cal-title { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 700; }
-.cal-nav-btn { width: 36px; height: 36px; border-radius: 10px; background: rgba(255,255,255,0.04); border: 1px solid var(--guild-border); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; color: var(--guild-text2); font-size: 16px; font-weight: 600; user-select: none; }
-.cal-nav-btn:hover { background: rgba(var(--a-rgb),0.1); border-color: var(--b); color: var(--guild-text); }
-.cal-grid { }
-.cal-days-header { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; margin-bottom: 8px; }
-.cal-day-name { text-align: center; font-size: 11px; font-weight: 600; color: var(--guild-muted); text-transform: uppercase; letter-spacing: 0.05em; padding: 6px 0; }
-.cal-dates { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
-.cal-date { text-align: center; padding: 10px 4px; border-radius: 10px; font-size: 14px; font-weight: 500; color: var(--guild-text2); transition: all 0.15s; position: relative; }
-.cal-date.other-month { color: transparent; }
-.cal-date.today { background: rgba(var(--a-rgb),0.15); color: var(--b); font-weight: 700; box-shadow: inset 0 0 0 2px rgba(var(--a-rgb),0.4); }
-.cal-date.has-event { background: rgba(var(--c-rgb),0.12); color: var(--c); cursor: pointer; font-weight: 600; }
-.cal-date.has-event:hover { background: rgba(var(--c-rgb),0.25); transform: scale(1.1); }
-.cal-date.has-event::after { content: ''; position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); width: 5px; height: 5px; border-radius: 50%; background: var(--c); }
-.cal-date.today.has-event { background: linear-gradient(135deg, rgba(var(--a-rgb),0.2), rgba(var(--c-rgb),0.2)); box-shadow: inset 0 0 0 2px rgba(var(--a-rgb),0.5); }
+/* ===== Full-Size Calendar Grid ===== */
+.cal-widget { background: var(--grad-card); border: 1px solid var(--guild-border); border-radius: 20px; overflow: hidden; margin-bottom: 32px; }
+.cal-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 24px; background: var(--grad); }
+.cal-title { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 700; color: #fff; text-transform: uppercase; letter-spacing: 0.04em; }
+.cal-nav { display: flex; gap: 8px; }
+.cal-nav-btn { width: 36px; height: 36px; border-radius: 10px; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; color: #fff; font-size: 16px; font-weight: 600; user-select: none; }
+.cal-nav-btn:hover { background: rgba(255,255,255,0.25); }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
+.cal-day-name { text-align: center; font-size: 11px; font-weight: 700; color: #fff; text-transform: uppercase; letter-spacing: 0.08em; padding: 10px 0; background: rgba(var(--a-rgb), 0.6); border-bottom: 1px solid var(--guild-border); }
+.cal-cell { min-height: 100px; border: 1px solid var(--guild-border); padding: 6px 8px; display: flex; flex-direction: column; position: relative; transition: background 0.15s; cursor: default; }
+.cal-cell:hover { background: rgba(255,255,255,0.02); }
+.cal-cell.other-month { background: rgba(0,0,0,0.15); }
+.cal-cell.other-month .cal-cell-day { color: var(--guild-muted); opacity: 0.4; }
+.cal-cell.today { background: rgba(var(--a-rgb),0.08); }
+.cal-cell.today .cal-cell-day { background: var(--b); color: #000; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+.cal-cell-day { font-size: 14px; font-weight: 600; color: var(--guild-text2); margin-bottom: 4px; line-height: 28px; }
+.cal-cell-events { display: flex; flex-direction: column; gap: 3px; flex: 1; overflow: hidden; }
+.cal-cell-evt { font-size: 11px; padding: 3px 6px; border-radius: 4px; background: rgba(var(--c-rgb),0.15); color: var(--c); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: all 0.15s; font-weight: 500; border-left: 3px solid var(--c); }
+.cal-cell-evt:hover { background: rgba(var(--c-rgb),0.3); }
+.cal-cell-more { font-size: 10px; color: var(--guild-muted); padding: 2px 0; cursor: pointer; font-weight: 600; }
+.cal-cell-more:hover { color: var(--b); }
+/* Admin add-event button inside cells */
+.cal-cell.admin-cell:hover { background: rgba(var(--a-rgb),0.05); cursor: pointer; }
+.cal-cell-add { display: none; position: absolute; bottom: 6px; right: 6px; width: 22px; height: 22px; border-radius: 6px; background: rgba(var(--a-rgb),0.2); border: 1px solid rgba(var(--a-rgb),0.3); color: var(--b); font-size: 14px; cursor: pointer; align-items: center; justify-content: center; transition: all 0.15s; }
+.cal-cell.admin-cell:hover .cal-cell-add { display: flex; }
+.cal-cell-add:hover { background: rgba(var(--a-rgb),0.4); transform: scale(1.1); }
 
 /* Event Popup Overlay */
 .event-popup-overlay { display: none; position: fixed; inset: 0; z-index: 200; background: rgba(8,5,16,0.85); backdrop-filter: blur(12px); align-items: center; justify-content: center; }
 .event-popup-overlay.show { display: flex; }
-.event-popup { background: var(--grad-card); border: 1px solid var(--guild-border); border-radius: 24px; padding: 28px; width: 90%; max-width: 480px; animation: fadeUp 0.3s ease both; }
+.event-popup { background: var(--grad-card); border: 1px solid var(--guild-border); border-radius: 24px; padding: 28px; width: 90%; max-width: 520px; animation: fadeUp 0.3s ease both; max-height: 85vh; overflow-y: auto; }
 .popup-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid var(--guild-border); }
 .popup-date-title { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; }
 .popup-close { width: 32px; height: 32px; border-radius: 8px; background: rgba(255,255,255,0.04); border: 1px solid var(--guild-border); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; font-size: 16px; color: var(--guild-muted); }
@@ -487,6 +496,32 @@ a { color: inherit; text-decoration: none; }
 .popup-event-time { font-size: 12px; color: var(--guild-muted); font-family: 'DM Mono', monospace; margin-bottom: 8px; }
 .popup-event-desc { font-size: 13px; color: var(--guild-text2); line-height: 1.5; margin-bottom: 12px; }
 .popup-event-actions { display: flex; gap: 8px; }
+
+/* Add Event Form inside popup */
+.add-event-form { display: flex; flex-direction: column; gap: 14px; }
+.add-event-form label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--guild-text2); text-transform: uppercase; letter-spacing: 0.05em; }
+.add-event-form input,
+.add-event-form textarea { background: rgba(255,255,255,0.04); border: 1px solid var(--guild-border); border-radius: 10px; padding: 10px 14px; color: var(--guild-text); font-size: 14px; font-family: 'DM Sans', sans-serif; outline: none; transition: border-color 0.2s; }
+.add-event-form input:focus,
+.add-event-form textarea:focus { border-color: var(--b); }
+.add-event-form textarea { resize: vertical; min-height: 80px; }
+.add-event-form .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.add-event-btns { display: flex; gap: 10px; margin-top: 4px; }
+.add-event-btns .btn-save { flex: 1; padding: 10px; border: none; border-radius: 10px; background: var(--grad); color: #fff; font-weight: 600; font-size: 14px; cursor: pointer; transition: opacity 0.2s; }
+.add-event-btns .btn-save:hover { opacity: 0.9; }
+.add-event-btns .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
+.add-event-btns .btn-cancel { flex: 0; padding: 10px 20px; border: 1px solid var(--guild-border); border-radius: 10px; background: transparent; color: var(--guild-text2); font-weight: 500; font-size: 14px; cursor: pointer; transition: all 0.2s; }
+.add-event-btns .btn-cancel:hover { background: rgba(255,255,255,0.04); }
+
+/* Calendar responsive - smaller cells on mobile */
+@media (max-width: 768px) {
+  .cal-cell { min-height: 70px; padding: 4px 5px; }
+  .cal-cell-day { font-size: 12px; }
+  .cal-cell-evt { font-size: 10px; padding: 2px 4px; }
+  .cal-day-name { font-size: 9px; padding: 6px 0; }
+  .cal-title { font-size: 16px; }
+  .add-event-form .form-row { grid-template-columns: 1fr; }
+}
 
 /* Announcement title (used with InlineEditor) */
 .ann-title { font-weight: 600; font-size: 14px; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
