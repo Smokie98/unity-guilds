@@ -130,8 +130,8 @@ export default function GuildieGamesPage() {
 
       <div className="main" style={{ maxWidth: "1100px", margin: "0 auto", padding: "40px 24px", position: "relative", zIndex: 1 }}>
         {/* Back Navigation */}
-        <Link href="/" className="back-nav">
-          {"\u2190"} All Guilds
+        <Link href={userGuild ? `/${userGuild}` : "/"} className="back-nav">
+          {"\u2190"} {userGuild ? "Back to Guild" : "All Guilds"}
         </Link>
 
         {/* Hero */}
