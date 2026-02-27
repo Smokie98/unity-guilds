@@ -1,0 +1,22 @@
+{
+  "name": "Unity Guilds — Community Newsletter Hub",
+  "short_name": "Unity Guilds",
+  "description": "Your hub for Unity Guild newsletters, events, spotlights, and Guildie Games.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#080510",
+  "theme_color": "#9146FF",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
